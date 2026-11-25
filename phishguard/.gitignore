@@ -1,17 +1,24 @@
-node_modules
-dist
-.env
-__pycache__
-backend/.venv
-backend/instance
 
-# Local secrets and runtime data
+# Node.js
+node_modules/
+dist/
+
+# Environment variables and secrets
+.env
 .env.*
 !.env.example
-backend/.env
-backend/.env.*
-!backend/.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+backend/.venv/
+
+# Backend runtime data
 backend/instance/
 backend/*.db
 backend/*.sqlite
 backend/*.sqlite3
+
+# Logs
+*.log
+
