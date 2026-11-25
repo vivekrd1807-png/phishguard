@@ -1,0 +1,30 @@
+{
+  "test_rows": 60000,
+  "train_rows": 240000,
+  "scores": {
+    "Logistic Regression": {
+      "accuracy": 0.9651,
+      "precision": 0.926,
+      "recall": 0.9188,
+      "f1": 0.9224
+    },
+    "Random Forest": {
+      "accuracy": 0.9271,
+      "precision": 0.8306,
+      "recall": 0.8502,
+      "f1": 0.8403
+    },
+    "XGBoost": {
+      "accuracy": 0.9527,
+      "precision": 0.9402,
+      "recall": 0.8437,
+      "f1": 0.8894
+    },
+    "Ensemble (majority vote)": {
+      "accuracy": 0.955,
+      "precision": 0.9238,
+      "recall": 0.8725,
+      "f1": 0.8974
+    }
+  }
+}

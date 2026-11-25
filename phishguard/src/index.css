@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 225 61% 15%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 100%;
+    --card-foreground: 225 61% 15%;
+    --primary: 224 59% 15%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 25% 94%;
+    --secondary-foreground: 224 59% 15%;
+    --muted: 220 25% 94%;
+    --muted-foreground: 224 18% 40%;
+    --accent: 220 25% 94%;
+    --accent-foreground: 224 59% 15%;
+    --destructive: 357 66% 54%;
+    --border: 222 22% 88%;
+    --input: 222 22% 84%;
+    --ring: 191 100% 40%;
+  }
+  * { @apply border-border; }
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  :focus-visible { @apply outline-none ring-2 ring-cyan ring-offset-2 ring-offset-background; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
