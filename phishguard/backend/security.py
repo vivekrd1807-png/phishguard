@@ -91,9 +91,15 @@ def check_new_password(pw, field="password"):
 
 # ---------------------------------------------------------------- CSRF / Origin
 def allowed_origins():
-    # In production, set this to the exact frontend origin(s), comma-separated.
-    default = ("http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,"
-               "https://phishguard-im3h.vercel.app")
+    # Exact frontend origins allowed to access the backend
+    default = (
+        "http://localhost:5173,"
+        "http://127.0.0.1:5173,"
+        "http://localhost:4173,"
+        "http://127.0.0.1:4173,"
+        "https://phishguard-beryl-rho.vercel.app"
+    )
+
     raw = os.environ.get("PHISHGUARD_ORIGINS", default)
     return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
 
