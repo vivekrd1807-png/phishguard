@@ -5,13 +5,12 @@ import logging
 import os
 import secrets
 import smtplib
-import sqlite3
 from email.message import EmailMessage
 
 from flask import Blueprint, g, jsonify, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from db import get_db, now_ms
+from db import IntegrityError, get_db, now_ms
 from security import (ApiError, check_new_password, csrf_token, email_field, json_body, login_required,
                       password_field, rate_limit, start_session, text_field, allowed_origins)
 
@@ -111,7 +110,7 @@ def register():
     try:
         cur = db.execute("INSERT INTO users (name, email, password_hash, created_at, last_login_at) VALUES (?,?,?,?,?)",
                          (name, email, generate_password_hash(pw), now_ms(), now_ms()))
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         raise ApiError("An account with this email already exists.", 409, "email")
     uid = cur.lastrowid
     db.execute("INSERT INTO preferences (user_id) VALUES (?)", (uid,))
@@ -205,7 +204,7 @@ def reset_password():
 def get_profile():
     db = get_db()
     stats = db.execute("SELECT COUNT(*) AS total, "
-                       "SUM(verdict='phishing') AS phishing, SUM(verdict='suspicious') AS suspicious, SUM(verdict='safe') AS safe "
+                       "SUM(CASE WHEN verdict='phishing' THEN 1 ELSE 0 END) AS phishing, SUM(CASE WHEN verdict='suspicious' THEN 1 ELSE 0 END) AS suspicious, SUM(CASE WHEN verdict='safe' THEN 1 ELSE 0 END) AS safe "
                        "FROM scans WHERE user_id = ?", (g.user["id"],)).fetchone()
     return jsonify(user=user_json(g.user), stats={k: stats[k] or 0 for k in ("total", "phishing", "suspicious", "safe")})
 
@@ -227,7 +226,7 @@ def update_profile():
             email = new_email
     try:
         db.execute("UPDATE users SET name = ?, bio = ?, email = ? WHERE id = ?", (name, bio, email, g.user["id"]))
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         raise ApiError("That email is already used by another account.", 409, "email")
     if email != g.user["email"]:
         notify(g.user["id"], "security", "Email changed", f"Your sign-in email is now {email}.", "/settings", "notify_security")
@@ -315,7 +314,8 @@ def write_prefs():
         current["suspicious_threshold"] = round(float(t), 2)
     db = get_db()
     cols = list(PREF_DEFAULTS)
-    db.execute(f"INSERT OR REPLACE INTO preferences (user_id, {', '.join(cols)}) VALUES (?{',?' * len(cols)})",
+    db.execute(f"INSERT INTO preferences (user_id, {', '.join(cols)}) VALUES (?{',?' * len(cols)}) "
+               f"ON CONFLICT (user_id) DO UPDATE SET {', '.join(f'{c} = excluded.{c}' for c in cols)}",
                (g.user["id"], *[int(current[c]) if c in BOOL_PREFS else current[c] for c in cols]))
     db.commit()
     return jsonify(preferences=current)

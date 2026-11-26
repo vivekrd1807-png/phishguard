@@ -16,6 +16,7 @@ from datetime import timedelta
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from features import extract_features
 from trusted import is_trusted
@@ -32,15 +33,19 @@ from security import (ApiError, allowed_origins, load_secret_key, load_user, log
 USE_TRUSTED_LIST = True
 
 app = Flask(__name__)
-IS_PROD = os.environ.get("PHISHGUARD_ENV", "development").lower() == "production"
+# Render/Vercel sit in front of Gunicorn: trust one proxy hop for the real client IP and https scheme.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+# Render sets RENDER=true, so a deployment there is treated as production even if PHISHGUARD_ENV was forgotten.
+IS_PROD = os.environ.get("PHISHGUARD_ENV", "").lower() == "production" or bool(os.environ.get("RENDER"))
+SAMESITE = os.environ.get("PHISHGUARD_COOKIE_SAMESITE", "Lax").capitalize()
 BASE_DIR = Path(__file__).resolve().parent
 app.config.update(
     SECRET_KEY=load_secret_key(),
     SESSION_COOKIE_NAME="phishguard_session",
     SESSION_COOKIE_HTTPONLY=True,          # not readable from JavaScript
     # Use "None" only when frontend and API are on different sites; HTTPS is then mandatory.
-    SESSION_COOKIE_SAMESITE=os.environ.get("PHISHGUARD_COOKIE_SAMESITE", "Lax").capitalize(),
-    SESSION_COOKIE_SECURE=IS_PROD,         # HTTPS only in production
+    SESSION_COOKIE_SAMESITE=SAMESITE,
+    SESSION_COOKIE_SECURE=IS_PROD or SAMESITE == "None",   # HTTPS only in production (browsers require it for SameSite=None)
     PERMANENT_SESSION_LIFETIME=timedelta(days=14),   # used when "Remember me" is ticked
     MAX_CONTENT_LENGTH=64 * 1024,          # API bodies are tiny; reject anything bigger
 )

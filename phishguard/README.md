@@ -75,9 +75,13 @@ The project is split into a static React frontend and a Flask API. Deploy them a
 - Set `VITE_API_URL` to the public backend URL (for example `https://your-api.onrender.com`). This value is embedded at build time, so rebuild after changing it.
 - `vercel.json` routes client-side React paths back to `index.html`.
 
-### 3. Cookies and cross-site hosting
+### 3. Connecting Vercel, Render and the database
 
-Use HTTPS for both services. Keep `PHISHGUARD_COOKIE_SAMESITE=Lax` when frontend and API are same-site subdomains (such as `app.example.com` and `api.example.com`). If the frontend and API are on different sites (for example the default `vercel.app` and `onrender.com` domains), set `PHISHGUARD_COOKIE_SAMESITE=None`; the backend sets `Secure` cookies in production. However, some browsers block third-party cookies even with this setting. For reliable sign-in, use custom frontend/API subdomains under the same registrable domain (for example `app.example.com` and `api.example.com`) or put the API behind a same-origin reverse proxy. Keep the exact frontend URL in `PHISHGUARD_ORIGINS` and do not use wildcard CORS with credentials.
+**Frontend <-> backend.** `vercel.json` proxies `https://<vercel-app>/backend/*` to the Render API, and the built app calls `/backend/...`, so the browser only talks to the Vercel origin and the login cookie is first-party (works in Safari/Chrome without third-party-cookie problems). Do **not** set `VITE_API_URL` on Vercel (it is ignored in production builds). If you change the Render URL, edit the destination in `vercel.json`.
+
+**Render environment variables:** `PHISHGUARD_ENV=production`, `PHISHGUARD_SECRET_KEY=<long random>`, `PHISHGUARD_ORIGINS=https://phishguard-im3h.vercel.app`, `DATABASE_URL=<postgres url>`. Leave `PHISHGUARD_COOKIE_SAMESITE` unset (Lax).
+
+**Database.** Render's disk is wiped on every redeploy/restart, so SQLite loses all accounts. Set `DATABASE_URL` to a PostgreSQL URL (Render Postgres, Neon or Supabase); tables are created automatically on startup and the SQLite file is no longer used. Without `DATABASE_URL` the app falls back to SQLite (local development).
 
 ### 4. Password reset email
 

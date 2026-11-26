@@ -1,5 +1,6 @@
 """Shared security helpers: secret key, CSRF + Origin checks, rate limiting, login_required, input validation."""
 import hmac
+import logging
 import os
 import re
 import secrets
@@ -26,6 +27,9 @@ def load_secret_key():
     env = os.environ.get("PHISHGUARD_SECRET_KEY")
     if env:
         return env
+    if os.environ.get("RENDER") or os.environ.get("PHISHGUARD_ENV", "").lower() == "production":
+        logging.getLogger(__name__).warning("PHISHGUARD_SECRET_KEY is not set: a temporary key is used and every "
+                                            "user is signed out on each restart. Set it in the host's environment.")
     os.makedirs(INSTANCE_DIR, exist_ok=True)
     path = os.path.join(INSTANCE_DIR, "secret_key")
     if not os.path.exists(path):
@@ -88,7 +92,8 @@ def check_new_password(pw, field="password"):
 # ---------------------------------------------------------------- CSRF / Origin
 def allowed_origins():
     # In production, set this to the exact frontend origin(s), comma-separated.
-    default = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173"
+    default = ("http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,"
+               "https://phishguard-im3h.vercel.app")
     raw = os.environ.get("PHISHGUARD_ORIGINS", default)
     return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
 

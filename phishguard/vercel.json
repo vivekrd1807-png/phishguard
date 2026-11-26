@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/backend/:path*", "destination": "https://phishguard-667r.onrender.com/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

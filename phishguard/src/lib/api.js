@@ -1,7 +1,13 @@
-// Calls the PhishGuard backend (Flask). Override the address with VITE_API_URL in a .env file if needed.
-// By default the API is expected on port 5000 of the same host the page was opened from, so the session cookie
-// stays same-site whether you browse localhost or 127.0.0.1.
-const BASE = (import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:5000`).replace(/\/+$/, "");
+// Calls the PhishGuard backend (Flask).
+//  * Production (Vercel): requests go to /backend/..., which vercel.json proxies to the Render API. The browser only
+//    ever talks to the Vercel origin, so the session cookie is first-party and works in every browser.
+//    (Set VITE_API_DIRECT_URL only if you deliberately want to call the API's own domain.)
+//  * Development: the API is expected on port 5000 of the same host the page was opened from (override: VITE_API_URL).
+const BASE = (
+  import.meta.env.PROD
+    ? import.meta.env.VITE_API_DIRECT_URL || "/backend"
+    : import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:5000`
+).replace(/\/+$/, "");
 
 export class ApiError extends Error {
   constructor(message, status, field) {
@@ -13,13 +19,33 @@ export class ApiError extends Error {
 
 let csrf = null; // anti-CSRF token for this session; sent as X-CSRF-Token on every non-GET request
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const COLD_START_STATUSES = new Set([502, 503, 504]); // Render free instances sleep; the first requests can fail while it wakes
+
 async function raw(path, options) {
-  try {
-    return await fetch(`${BASE}${path}`, { credentials: "include", ...options });
-  } catch {
-    throw new ApiError("Cannot reach the detection service. Start the backend with: cd backend && python app.py", 0);
+  // Retry a few times: a sleeping Render service answers 502/503/504 or drops the connection for up to ~a minute.
+  const attempts = import.meta.env.PROD ? 6 : 1;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(`${BASE}${path}`, { credentials: "include", ...options });
+      const idempotent = !options?.method || options.method === "GET";
+      if (!idempotent || !COLD_START_STATUSES.has(res.status) || i === attempts - 1) return res;
+    } catch {
+      if (i === attempts - 1) {
+        throw new ApiError(
+          import.meta.env.PROD
+            ? "Cannot reach the detection service right now. It may be waking up; please try again in a moment."
+            : "Cannot reach the detection service. Start the backend with: cd backend && python app.py",
+          0,
+        );
+      }
+    }
+    await sleep(Math.min(2000 * (i + 1), 8000));
   }
 }
+
+// Wake the API as soon as the site opens so it is ready by the time the user signs in.
+if (import.meta.env.PROD) fetch(`${BASE}/health`, { credentials: "include" }).catch(() => {});
 
 async function ensureCsrf() {
   if (!csrf) {
