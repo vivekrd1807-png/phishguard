@@ -37,7 +37,7 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 # Render sets RENDER=true, so a deployment there is treated as production even if PHISHGUARD_ENV was forgotten.
 IS_PROD = os.environ.get("PHISHGUARD_ENV", "").lower() == "production" or bool(os.environ.get("RENDER"))
-SAMESITE = os.environ.get("PHISHGUARD_COOKIE_SAMESITE", "Lax").strip().capitalize()g
+SAMESITE = os.environ.get("PHISHGUARD_COOKIE_SAMESITE", "Lax").strip().capitalize()
 BASE_DIR = Path(__file__).resolve().parent
 app.config.update(
     SECRET_KEY=load_secret_key(),
